@@ -10,7 +10,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
 
-public class RemoteController {
+public class Controller {
     public static final int STICK_NONE = 0;
     public static final int STICK_UP = 1;
     public static final int STICK_UPRIGHT = 2;
@@ -39,7 +39,7 @@ public class RemoteController {
 
     private boolean touch_state = false;
 
-    public RemoteController (Context context, ViewGroup layout, int stick_res_id) {
+    public Controller(Context context, ViewGroup layout, int stick_res_id) {
         mContext = context;
 
         stick = BitmapFactory.decodeResource(mContext.getResources(),

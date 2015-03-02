@@ -33,11 +33,13 @@ public class MainActivity extends Activity {
 
     private WebView webView;
 
-    private RemoteController remoteController, cameraController;
+    private Controller remoteController, cameraController;
 
     private MessageCorresponder messageCorresponder;
 
     private Socket socket;
+
+    private String cameraDirection, remoteDirection;
 
 
     @Override
@@ -64,7 +66,7 @@ public class MainActivity extends Activity {
 
         webView.loadUrl("http://192.168.1.153:8080/");
 
-        remoteController = new RemoteController(getApplicationContext(), layout_rc, R.drawable.image_button);
+        remoteController = new Controller(getApplicationContext(), layout_rc, R.drawable.image_button);
         remoteController.setStickSize(150, 150);
         remoteController.setLayoutSize(500, 500);
         remoteController.setLayoutAlpha(150);
@@ -72,7 +74,7 @@ public class MainActivity extends Activity {
         remoteController.setOffset(90);
         remoteController.setMinimumDistance(50);
 
-        cameraController = new RemoteController(getApplicationContext(), layout_camera, R.drawable.image_button);
+        cameraController = new Controller(getApplicationContext(), layout_camera, R.drawable.image_button);
         cameraController.setStickSize(150, 150);
         cameraController.setLayoutSize(500, 500);
         cameraController.setLayoutAlpha(150);
@@ -101,26 +103,21 @@ public class MainActivity extends Activity {
                     textView3.setText("Angle : " + String.valueOf(remoteController.getAngle()));
                     textView4.setText("Distance : " + String.valueOf(remoteController.getDistance()));
 
-                    ConnectivityManager connMgr = (ConnectivityManager)
-                            getSystemService(Context.CONNECTIVITY_SERVICE);
-                    NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
-                    if (networkInfo != null && networkInfo.isConnected()) {
-                        new MessageCorresponder().execute(String.valueOf(cameraController.getAngle()));
-                    }
-                    else {
-                        textView3.setText("No network connection available.");
-                    }
-
                     int direction = remoteController.get4Direction();
-                    if (direction == RemoteController.STICK_UP) {
+                    if (direction == Controller.STICK_UP) {
+                        remoteDirection = "U";
                         textView5.setText("Direction : Up");
-                    } else if (direction == RemoteController.STICK_RIGHT) {
+                    } else if (direction == Controller.STICK_RIGHT) {
+                        remoteDirection = "R";
                         textView5.setText("Direction : Right");
-                    } else if (direction == RemoteController.STICK_DOWN) {
+                    } else if (direction == Controller.STICK_DOWN) {
                         textView5.setText("Direction : Down");
-                    } else if (direction == RemoteController.STICK_LEFT) {
+                        remoteDirection = "D";
+                    } else if (direction == Controller.STICK_LEFT) {
+                        remoteDirection = "L";
                         textView5.setText("Direction : Left");
-                    } else if (direction == RemoteController.STICK_NONE) {
+                    } else if (direction == Controller.STICK_NONE) {
+                        remoteDirection = "N";
                         textView5.setText("Direction : Center");
                     }
                 } else if (arg1.getAction() == MotionEvent.ACTION_UP) {
@@ -130,6 +127,17 @@ public class MainActivity extends Activity {
                     textView4.setText("Distance :");
                     textView5.setText("Direction :");
                 }
+
+                ConnectivityManager connMgr = (ConnectivityManager)
+                        getSystemService(Context.CONNECTIVITY_SERVICE);
+                NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
+                if (networkInfo != null && networkInfo.isConnected()) {
+                    new MessageCorresponder().execute(String.valueOf(remoteDirection));
+                }
+                else {
+                    textView3.setText("No network connection available.");
+                }
+
                 return true;
             }
         });
@@ -145,15 +153,15 @@ public class MainActivity extends Activity {
                     textView9.setText("Distance : " + String.valueOf(cameraController.getDistance()));
 
                     int direction = cameraController.get4Direction();
-                    if (direction == RemoteController.STICK_UP) {
+                    if (direction == Controller.STICK_UP) {
                         textView10.setText("Direction : Up");
-                    } else if (direction == RemoteController.STICK_RIGHT) {
+                    } else if (direction == Controller.STICK_RIGHT) {
                         textView10.setText("Direction : Right");
-                    } else if (direction == RemoteController.STICK_DOWN) {
+                    } else if (direction == Controller.STICK_DOWN) {
                         textView10.setText("Direction : Down");
-                    } else if (direction == RemoteController.STICK_LEFT) {
+                    } else if (direction == Controller.STICK_LEFT) {
                         textView10.setText("Direction : Left");
-                    } else if (direction == RemoteController.STICK_NONE) {
+                    } else if (direction == Controller.STICK_NONE) {
                         textView10.setText("Direction : Center");
                     }
                 } else if (arg1.getAction() == MotionEvent.ACTION_UP) {
