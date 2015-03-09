@@ -1,0 +1,37 @@
+<PreferenceScreen
+xmlns:android="http://schemas.android.com/apk/res/android">
+
+<PreferenceCategory
+    android:id="@+id/prefId">
+
+
+    <EditTextPreference
+        android:key="serverip"
+        android:title="Server IP"
+        android:summary="Please enter the Arduino Server IP"
+        android:dialogTitle="Please enter the Arduino Server IP" />
+
+    <EditTextPreference
+        android:numeric="integer"
+        android:key="serverport"
+        android:title="Server Port"
+        android:summary="Please enter the Arduino Server Port"
+        android:dialogTitle="Please enter the Arduino Server Port" />
+
+    <EditTextPreference
+        android:numeric="integer"
+        android:key="cameraip"
+        android:title="Camera IP"
+        android:summary="Please enter the Camera IP"
+        android:dialogTitle="Please enter the Camera IP" />
+
+    <EditTextPreference
+        android:numeric="integer"
+        android:key="cameraport"
+        android:title="Camera Port"
+        android:summary="Please enter the Camera Port"
+        android:dialogTitle="Please enter the Camera Port" />
+
+</PreferenceCategory>
+
+</PreferenceScreen>

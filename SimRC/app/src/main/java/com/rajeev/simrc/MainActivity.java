@@ -2,31 +2,37 @@ package com.rajeev.simrc;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Vibrator;
+import android.preference.PreferenceFragment;
+import android.preference.PreferenceManager;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.webkit.WebSettings;
 import android.webkit.WebView;
-import android.widget.ImageView;
+import android.widget.Button;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.rajeev.simrc.backend.MessageCorresponder;
+import com.rajeev.simrc.backend.SocketHelper;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.net.Socket;
-import java.net.UnknownHostException;
 
 
 public class MainActivity extends Activity {
 
     private RelativeLayout layout_rc, layout_camera;
+
+    private Vibrator v ;
 
     private TextView textView1, textView2, textView3, textView4, textView5;
     private TextView textView6, textView7, textView8, textView9, textView10;
@@ -37,34 +43,106 @@ public class MainActivity extends Activity {
 
     private MessageCorresponder messageCorresponder;
 
+    private static String CAMERA_IP = "192.168.1.30";
+    private static String SERVER_IP = "192.168.1.31";
+  //  private static String SERVER_IP = "192.168.1.27";
+    private static Integer CAMERA_PORT = 8080;
+    private static Integer SERVER_PORT = 6666;
+
+    private Button startButton, stopButton;
+
     private Socket socket;
-
-    private String cameraDirection, remoteDirection;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
+        // Display the fragment as the main content.
+      //  getFragmentManager().beginTransaction().replace(android.R.id.content, new PrefsFragment()).commit();
+
+        v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 
         setContentView(R.layout.activity_tablet_landscape);
 
-        webView = (WebView)findViewById(R.id.cameraView);
+//        this.socket = new Socket();
+//
+//        SocketHelper x = new SocketHelper(this.socket, SERVER_IP, SERVER_PORT);
+//
+//        x.execute();
 
-        textView1 = (TextView)findViewById(R.id.textView1);
-        textView2 = (TextView)findViewById(R.id.textView2);
-        textView3 = (TextView)findViewById(R.id.textView3);
-        textView4 = (TextView)findViewById(R.id.textView4);
-        textView5 = (TextView)findViewById(R.id.textView5);
-        textView6 = (TextView)findViewById(R.id.textView6);
-        textView7 = (TextView)findViewById(R.id.textView7);
-        textView8 = (TextView)findViewById(R.id.textView8);
-        textView9 = (TextView)findViewById(R.id.textView9);
-        textView10 = (TextView)findViewById(R.id.textView10);
+
+
+
+
+//
+//
+//
+//
+//        try {
+//            messageCorresponder = new MessageCorresponder(socket, SERVER_IP, SERVER_PORT);
+//        } catch (IOException e) {
+//            Log.d("onCreate", "Error instantiating socket connection");
+//            e.printStackTrace();
+//        }
+        setUpButtons();
+
+        setUpCamera();
+
+        setUpTouchListeners();
+
+    //    loadPref();
+
+    }
+
+
+    private void setUpButtons() {
+
+        startButton = (Button) findViewById(R.id.startButton);
+        stopButton = (Button) findViewById(R.id.stopButton);
+
+        startButton.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View arg0) {
+            String message = buildMessage("ON0", 000);
+                try {
+                    new MessageCorresponder(SERVER_IP, SERVER_PORT).execute(message);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+            }
+
+        });
+
+        stopButton.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View arg0) {
+            String message = buildMessage("OFF", 000);
+                try {
+                    new MessageCorresponder(SERVER_IP, SERVER_PORT).execute(message);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+            }
+
+        });
+    }
+
+    private void setUpCamera() {
+
+        webView = (WebView)findViewById(R.id.cameraView);
+        WebSettings webSettings = webView.getSettings();
+        webSettings.setJavaScriptEnabled(true);
+        webView.loadUrl("http://" + CAMERA_IP + ":" + CAMERA_PORT + "/");
+    }
+
+    private void setUpTouchListeners() {
 
         layout_rc = (RelativeLayout)findViewById(R.id.layout_joystick);
         layout_camera = (RelativeLayout)findViewById(R.id.layout_camera);
-
-        webView.loadUrl("http://192.168.1.153:8080/");
 
         remoteController = new Controller(getApplicationContext(), layout_rc, R.drawable.image_button);
         remoteController.setStickSize(150, 150);
@@ -82,14 +160,16 @@ public class MainActivity extends Activity {
         cameraController.setOffset(90);
         cameraController.setMinimumDistance(50);
 
-        setUpTouchListeners();
-
-    }
-
-    private void setUpTouchListeners() {
-
         layout_rc.setOnTouchListener(new View.OnTouchListener() {
+
             public boolean onTouch(View arg0, MotionEvent arg1) {
+
+                int power = 0;
+                String dir = "";
+                String power_dir = "";
+
+                if(v.hasVibrator())
+                    v.vibrate(50);
 
                 long eventDuration = arg1.getEventTime() - arg1.getDownTime();
 
@@ -98,84 +178,109 @@ public class MainActivity extends Activity {
                 remoteController.drawStick(arg1);
                 if (arg1.getAction() == MotionEvent.ACTION_DOWN
                         || arg1.getAction() == MotionEvent.ACTION_MOVE) {
-                    textView1.setText("X : " + String.valueOf(remoteController.getX()));
-                    textView2.setText("Y : " + String.valueOf(remoteController.getY()));
-                    textView3.setText("Angle : " + String.valueOf(remoteController.getAngle()));
-                    textView4.setText("Distance : " + String.valueOf(remoteController.getDistance()));
+
+                    Log.d("X : " , String.valueOf(remoteController.getX()));
+                    Log.d("Y : " , String.valueOf(remoteController.getY()));
+                    Log.d("Power : " , String.valueOf(remoteController.getPower()));
+                    Log.d("Distance : " , String.valueOf(remoteController.getDistance()));
+
+                    power = remoteController.getPower();
 
                     int direction = remoteController.get4Direction();
                     if (direction == Controller.STICK_UP) {
-                        remoteDirection = "U";
-                        textView5.setText("Direction : Up");
+
+                        dir = "FWD";
+                        Log.d("Direction : ", dir);
+
                     } else if (direction == Controller.STICK_RIGHT) {
-                        remoteDirection = "R";
-                        textView5.setText("Direction : Right");
+
+                        dir = "RHT";
+                        Log.d("Direction : ", dir);
+
                     } else if (direction == Controller.STICK_DOWN) {
-                        textView5.setText("Direction : Down");
-                        remoteDirection = "D";
+
+                        dir = "BCK";
+                        Log.d("Direction : ", dir);
+
                     } else if (direction == Controller.STICK_LEFT) {
-                        remoteDirection = "L";
-                        textView5.setText("Direction : Left");
+
+                        dir = "LFT";
+                        Log.d("Direction : ", dir);
+
                     } else if (direction == Controller.STICK_NONE) {
-                        remoteDirection = "N";
-                        textView5.setText("Direction : Center");
+
+                        dir = "STP";
+                        Log.d("Direction : ", dir);
+
                     }
+
                 } else if (arg1.getAction() == MotionEvent.ACTION_UP) {
-                    textView1.setText("X :");
-                    textView2.setText("Y :");
-                    textView3.setText("Angle :");
-                    textView4.setText("Distance :");
-                    textView5.setText("Direction :");
+                    dir = "STP";
+                    Log.d("Direction : ", dir);
                 }
 
-                ConnectivityManager connMgr = (ConnectivityManager)
-                        getSystemService(Context.CONNECTIVITY_SERVICE);
+                String message = buildMessage(dir, power);
+
+
+                ConnectivityManager connMgr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
                 NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
+
                 if (networkInfo != null && networkInfo.isConnected()) {
-                    new MessageCorresponder().execute(String.valueOf(remoteDirection));
+                    messageCorresponder.execute(message);
                 }
                 else {
                     textView3.setText("No network connection available.");
                 }
-
                 return true;
             }
         });
 
         layout_camera.setOnTouchListener(new View.OnTouchListener() {
             public boolean onTouch(View arg0, MotionEvent arg1) {
+
+                Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+
+                // Start without a delay
+                // Each element then alternates between vibrate, sleep, vibrate, sleep...
+                long[] pattern = {0, 100, 1000, 300, 200, 100, 500, 200, 100};
+
+                // The '-1' here means to vibrate once, as '-1' is out of bounds in the pattern array
+                if(v.hasVibrator())
+                    v.vibrate(50);
+
                 cameraController.drawStick(arg1);
                 if (arg1.getAction() == MotionEvent.ACTION_DOWN
                         || arg1.getAction() == MotionEvent.ACTION_MOVE) {
-                    textView6.setText("X : " + String.valueOf(cameraController.getX()));
-                    textView7.setText("Y : " + String.valueOf(cameraController.getY()));
-                    textView8.setText("Angle : " + String.valueOf(cameraController.getAngle()));
-                    textView9.setText("Distance : " + String.valueOf(cameraController.getDistance()));
+
+                    Log.d("X : " , String.valueOf(cameraController.getX()));
+                    Log.d("Y : " , String.valueOf(cameraController.getY()));
+                    Log.d("Power : " , String.valueOf(cameraController.getPower()));
+                    Log.d("Distance : " , String.valueOf(cameraController.getDistance()));
 
                     int direction = cameraController.get4Direction();
-                    if (direction == Controller.STICK_UP) {
-                        textView10.setText("Direction : Up");
-                    } else if (direction == Controller.STICK_RIGHT) {
-                        textView10.setText("Direction : Right");
-                    } else if (direction == Controller.STICK_DOWN) {
-                        textView10.setText("Direction : Down");
-                    } else if (direction == Controller.STICK_LEFT) {
-                        textView10.setText("Direction : Left");
-                    } else if (direction == Controller.STICK_NONE) {
-                        textView10.setText("Direction : Center");
-                    }
+
                 } else if (arg1.getAction() == MotionEvent.ACTION_UP) {
-                    textView6.setText("X :");
-                    textView7.setText("Y :");
-                    textView8.setText("Angle :");
-                    textView9.setText("Distance :");
-                    textView10.setText("Direction :");
+
                 }
                 return true;
             }
         });
+
     }
 
+
+    private String buildMessage(String direction, int power) {
+
+        String formattedPower = String.format("%03d", power);
+
+        String message = "S";
+        message += direction;
+        message += formattedPower;
+        message += "00";
+        message += "E";
+
+        return message;
+    }
 
 
     @Override
@@ -198,5 +303,26 @@ public class MainActivity extends Activity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    public static class PrefsFragment extends PreferenceFragment {
+
+        @Override
+        public void onCreate(Bundle savedInstanceState) {
+            super.onCreate(savedInstanceState);
+
+            // Load the preferences from an XML resource
+            addPreferencesFromResource(R.xml.preferences);
+        }
+    }
+
+    private void loadPref(){
+        SharedPreferences mySharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+
+        SERVER_IP = mySharedPreferences.getString("serverip", "");
+        SERVER_PORT = mySharedPreferences.getInt("serverport", 1111);
+        CAMERA_IP = mySharedPreferences.getString("cameraip", "");
+        CAMERA_PORT = mySharedPreferences.getInt("cameraport", 1111);
+        Log.d("test", CAMERA_IP);
     }
 }

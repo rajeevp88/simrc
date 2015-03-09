@@ -1,10 +1,12 @@
 package com.rajeev.simrc;
 
 import android.content.Context;
+import android.content.SyncStatusObserver;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -25,6 +27,9 @@ public class Controller {
     private int LAYOUT_ALPHA = 200;
     private int OFFSET = 0;
 
+    private int centerX = 0;
+    private int centerY = 0;
+
     private Context mContext;
     private ViewGroup mLayout;
     private LayoutParams params;
@@ -36,6 +41,9 @@ public class Controller {
     private DrawCanvas draw;
     private Paint paint;
     private Bitmap stick;
+
+    private int joystickRadius;
+    private int power;
 
     private boolean touch_state = false;
 
@@ -52,13 +60,18 @@ public class Controller {
         paint = new Paint();
         mLayout = layout;
         params = mLayout.getLayoutParams();
+
+
     }
 
     public void drawStick(MotionEvent arg1) {
         position_x = (int) (arg1.getX() - (params.width / 2));
         position_y = (int) (arg1.getY() - (params.height / 2));
+
+
         distance = (float) Math.sqrt(Math.pow(position_x, 2) + Math.pow(position_y, 2));
         angle = (float) cal_angle(position_x, position_y);
+        power = getPower();
 
 
         if(arg1.getAction() == MotionEvent.ACTION_DOWN) {
@@ -108,6 +121,15 @@ public class Controller {
         return 0;
     }
 
+    public int getPower() {
+        joystickRadius = params.width / 2;
+        int power =  (int) (100 * Math.sqrt((position_x - centerX)
+                * (position_x - centerX) + (position_y - centerY)
+                * (position_y -centerY)) / (joystickRadius));
+
+        return Math.min(power, 100);
+    }
+
     public float getAngle() {
         if(distance > min_distance && touch_state) {
             return angle;
@@ -117,7 +139,7 @@ public class Controller {
 
     public float getDistance() {
         if(distance > min_distance && touch_state) {
-            return distance;
+            return Math.min(distance, params.width/2 );
         }
         return 0;
     }
